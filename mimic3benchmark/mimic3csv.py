@@ -14,6 +14,9 @@ def read_patients_table(mimic3_path):
     pats = dataframe_from_csv(os.path.join(mimic3_path, 'PATIENTS.csv'))
     pats = pats[['SUBJECT_ID', 'GENDER', 'DOB', 'DOD']]
     pats.DOB = pd.to_datetime(pats.DOB)
+    # this isn't good. this line address the overflow of int64 in line82 if the DOB is too early. there are some patient was born earlier than 1900/1/1
+    # TODO: figure out an way to address the above issue. this is just a temporarily fix
+    pats['DOB'].loc[(pats['DOB'] < pd.to_datetime("1900-01-1 00:00:00"))] = pd.to_datetime("1910-1-1 00:00:00")
     pats.DOD = pd.to_datetime(pats.DOD)
     return pats
 
