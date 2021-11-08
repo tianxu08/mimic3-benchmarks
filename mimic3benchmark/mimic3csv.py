@@ -271,6 +271,7 @@ def get_ventilation_durations(ventilation_events):
     ventilation_events_with_duration['VALUE'] = ventilation_events_with_duration['VENTDURATION']
     ventilation_events_with_duration['VALUEUOM'] = "mins"
     ventilation_events_with_duration = ventilation_events_with_duration[['SUBJECT_ID', 'HADM_ID', 'ICUSTAY_ID', 'CHARTTIME', 'ITEMID', 'VALUE', 'VALUEUOM']]
+    ventilation_events_with_duration['ICUSTAY_ID'] = ventilation_events_with_duration.ICUSTAY_ID.astype('int')
     # print("<><><> start_time: \n", ventilation_events_with_duration.to_string(), ventilation_events_with_duration.shape)
     
     return ventilation_events_with_duration
@@ -341,7 +342,7 @@ def read_d_items(mimic3_path):
     return d_items
 
 def read_events_table_by_row(mimic3_path, table):
-    nb_rows = {'chartevents': 330712484, 'labevents': 27854056, 'outputevents': 4349219}
+    nb_rows = {'chartevents': 330712484, 'labevents': 27854056, 'outputevents': 4349219, 'ventilation': 330712484}
     reader = csv.DictReader(open(os.path.join(mimic3_path, table.upper() + '.csv'), 'r'))
     for i, row in enumerate(reader):
         if 'ICUSTAY_ID' not in row:
@@ -453,6 +454,20 @@ def break_up_stays_by_subject(stays, output_path, subjects=None):
         stays[stays.SUBJECT_ID == subject_id].sort_values(by='INTIME').to_csv(os.path.join(dn, 'stays.csv'),
                                                                               index=False)
 
+def break_up_ventilation_by_subject(vent, output_path, subjects=None):
+    subjects = vent.SUBJECT_ID.unique() if subjects is None else subjects
+    nb_subjects = subjects.shape[0]
+    for subject_id in tqdm(subjects, total=nb_subjects, desc='Breaking up stays by subjects'):
+        dn = os.path.join(output_path, str(subject_id))
+        try:
+            os.makedirs(dn)
+        except:
+            pass
+
+        vent[vent.SUBJECT_ID == subject_id].sort_values(by='CHARTTIME').to_csv(os.path.join(dn, 'vent.csv'),
+                                                                              index=False)
+
+
 
 def break_up_diagnoses_by_subject(diagnoses, output_path, subjects=None):
     subjects = diagnoses.SUBJECT_ID.unique() if subjects is None else subjects
@@ -498,8 +513,10 @@ def read_events_table_and_break_up_by_subject(mimic3_path, table, output_path,
         w.writerows(data_stats.curr_obs)
         data_stats.curr_obs = []
 
-    nb_rows_dict = {'chartevents': 330712484, 'labevents': 27854056, 'outputevents': 4349219}
+    nb_rows_dict = {'chartevents': 330712484, 'labevents': 27854056, 'outputevents': 4349219, 'ventilation': 330712484}
+    print('teble: ', table)
     nb_rows = nb_rows_dict[table.lower()]
+    
     
     for row, row_no, _ in tqdm(read_events_table_by_row(mimic3_path, table), total=nb_rows,
                                                         desc='Processing {} table'.format(table)):
@@ -507,7 +524,6 @@ def read_events_table_and_break_up_by_subject(mimic3_path, table, output_path,
             continue
         if (items_to_keep is not None) and (row['ITEMID'] not in items_to_keep):
             continue
-        
         
         row_out = {'SUBJECT_ID': row['SUBJECT_ID'],
                    'HADM_ID': row['HADM_ID'],

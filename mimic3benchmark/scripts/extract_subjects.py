@@ -12,7 +12,7 @@ parser = argparse.ArgumentParser(description='Extract per-subject data from MIMI
 parser.add_argument('mimic3_path', type=str, help='Directory containing MIMIC-III CSV files.')
 parser.add_argument('output_path', type=str, help='Directory where per-subject data should be written.')
 parser.add_argument('--event_tables', '-e', type=str, nargs='+', help='Tables from which to read events.',
-                    default=['CHARTEVENTS', 'LABEVENTS', 'OUTPUTEVENTS'])
+                    default=['CHARTEVENTS', 'LABEVENTS', 'OUTPUTEVENTS', 'VENTILATION'])
 parser.add_argument('--phenotype_definitions', '-p', type=str,
                     default=os.path.join(os.path.dirname(__file__), '../resources/hcup_ccs_2015_definitions.yaml'),
                     help='YAML file with phenotype definitions.')
@@ -37,8 +37,8 @@ stays = read_icustays_table(args.mimic3_path)
 # d_items = read_d_items(args.mimic3_path)
 # vent_with_label = get_ventilation_events_with_label(vent, d_items)
 # print(vent_with_label.to_string())
-ventilation_classification = get_ventilation_classification(args.mimic3_path)
-ventilation_durations = get_ventilation_durations(ventilation_classification)
+# ventilation_classification = get_ventilation_classification(args.mimic3_path)
+# ventilation_durations = get_ventilation_durations(ventilation_classification)
 
 # patients_full = read_full_patients_table(args.mimic3_path)
 # stays_full = read_icustays_table(args.mimic3_path)
@@ -76,7 +76,7 @@ diagnoses = read_icd_diagnoses_table(args.mimic3_path)
 diagnoses = filter_diagnoses_on_stays(diagnoses, stays)
 diagnoses.to_csv(os.path.join(args.output_path, 'all_diagnoses.csv'), index=False)
 count_icd_codes(diagnoses, output_path=os.path.join(args.output_path, 'diagnosis_counts.csv'))
-ventilation_durations.to_csv(os.path.join(args.output_path, 'all_ventilation_durations.csv'), index=False)
+# ventilation_durations.to_csv(os.path.join(args.output_path, 'all_ventilation_durations.csv'), index=False)
 
 
 
@@ -95,6 +95,7 @@ subjects = stays.SUBJECT_ID.unique()
 # print("subjects: ", subjects)
 break_up_stays_by_subject(stays, args.output_path, subjects=subjects)
 break_up_diagnoses_by_subject(phenotypes, args.output_path, subjects=subjects)
+
 items_to_keep = set(
     [int(itemid) for itemid in dataframe_from_csv(args.itemids_file)['ITEMID'].unique()]) if args.itemids_file else None
 for table in args.event_tables:

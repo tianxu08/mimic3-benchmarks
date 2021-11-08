@@ -16,7 +16,7 @@ from mimic3benchmark.preprocessing import assemble_episodic_data
 parser = argparse.ArgumentParser(description='Extract episodes from per-subject data.')
 parser.add_argument('subjects_root_path', type=str, help='Directory containing subject sub-directories.')
 parser.add_argument('--variable_map_file', type=str,
-                    default=os.path.join(os.path.dirname(__file__), '../resources/itemid_to_variable_map_new2.csv'),
+                    default=os.path.join(os.path.dirname(__file__), '../resources/itemid_to_variable_map_101.csv'),
                     help='CSV containing ITEMID-to-VARIABLE map.')
 parser.add_argument('--reference_range_file', type=str,
                     default=os.path.join(os.path.dirname(__file__), '../resources/variable_ranges.csv'),
