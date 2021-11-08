@@ -76,6 +76,9 @@ diagnoses = read_icd_diagnoses_table(args.mimic3_path)
 diagnoses = filter_diagnoses_on_stays(diagnoses, stays)
 diagnoses.to_csv(os.path.join(args.output_path, 'all_diagnoses.csv'), index=False)
 count_icd_codes(diagnoses, output_path=os.path.join(args.output_path, 'diagnosis_counts.csv'))
+ventilation_durations.to_csv(os.path.join(args.output_path, 'all_ventilation_durations.csv'), index=False)
+
+
 
 phenotypes = add_hcup_ccs_2015_groups(diagnoses, yaml.load(open(args.phenotype_definitions, 'r')))
 make_phenotype_label_matrix(phenotypes, stays).to_csv(os.path.join(args.output_path, 'phenotype_labels.csv'),
@@ -89,6 +92,7 @@ if args.test:
     print('Using only', stays.shape[0], 'stays and only', args.event_tables[0], 'table')
 
 subjects = stays.SUBJECT_ID.unique()
+# print("subjects: ", subjects)
 break_up_stays_by_subject(stays, args.output_path, subjects=subjects)
 break_up_diagnoses_by_subject(phenotypes, args.output_path, subjects=subjects)
 items_to_keep = set(

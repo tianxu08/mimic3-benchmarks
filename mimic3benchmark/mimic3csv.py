@@ -71,7 +71,6 @@ def read_chartevents(mimic3_path):
 def get_ventilation_classification(mimic3_path):
     # read 
     chartevents = read_chartevents_vent(mimic3_path)
-    print(">>> chartevent.shape: ", chartevents.shape)
     # we need icustay_id, charttime, MechVent, OxygenTherapy, Extubated, SelfExtubated from chartevents_vent
     # def isEmpty(x):
     #     if x is not None:
@@ -182,7 +181,7 @@ def get_ventilation_classification(mimic3_path):
     selfExtubated = chartevents.apply(lambda row: calSelfExtubated(row), axis = 1)
     
     
-    chartevents = chartevents[['ICUSTAY_ID', 'CHARTTIME', 'ITEMID']]
+    chartevents = chartevents[['ICUSTAY_ID', 'CHARTTIME', 'ITEMID', 'SUBJECT_ID', 'HADM_ID']]
     chartevents['MECHVENT'] = mechVent
     chartevents['OXYGENTHERAPY'] = oxygenTherapy
     chartevents['EXTUBATED'] = extubated
@@ -205,23 +204,23 @@ def get_ventilation_classification(mimic3_path):
             return 1
         return 0
     procedureevents_mv['SELFEXTUBATED'] = procedureevents_mv.apply(lambda row: calProcedureevents_mvSelfExtubated(row), axis = 1)
-    procedureevents_mv = procedureevents_mv[['ICUSTAY_ID', 'CHARTTIME', 'ITEMID', 'MECHVENT', 'OXYGENTHERAPY', 'EXTUBATED', 'SELFEXTUBATED']]
+    procedureevents_mv = procedureevents_mv[['ICUSTAY_ID', 'CHARTTIME', 'ITEMID', 'MECHVENT', 'OXYGENTHERAPY', 'EXTUBATED', 'SELFEXTUBATED', 'HADM_ID', 'SUBJECT_ID']]
     
-    events = pd.concat([chartevents, procedureevents_mv], ignore_index=True)
-        
-    # print(events.to_string())
-    # print(mechVent.to_string())
+    events = pd.concat([chartevents, procedureevents_mv], ignore_index=True,)
+    
     return events
 
 def get_ventilation_durations(ventilation_events):
     # print(ventilation_events.to_string())
-    ventilation_events.sort_values(by=['ICUSTAY_ID', 'MECHVENT', 'CHARTTIME'])
+    ventilation_events = ventilation_events.sort_values(by=['ICUSTAY_ID', 'CHARTTIME', 'MECHVENT'])
     # ventilation_events_with_duration = ventilation_events[(ventilation_events.MECHVENT.isin([1]))]
     ventilation_events_with_duration = ventilation_events
 
     ventilation_events_with_duration.CHARTTIME = pd.to_datetime(ventilation_events_with_duration.CHARTTIME)
     
-    ventilation_events_with_duration['VENTDURATION'] = ventilation_events_with_duration.groupby(['ICUSTAY_ID', 'MECHVENT']).CHARTTIME.diff() 
+    
+    ventilation_events_with_duration['VENTDURATION_LAG'] = ventilation_events_with_duration.groupby(['ICUSTAY_ID', 'MECHVENT']).CHARTTIME.diff() 
+    ventilation_events_with_duration['VENTDURATION'] = ventilation_events_with_duration['VENTDURATION_LAG']
     # def filterDuration(x):
     #     if x is 'Nat' or x < pd.to_timedelta('0 days 00:00:00'):
     #         return -1
@@ -246,11 +245,35 @@ def get_ventilation_durations(ventilation_events):
 
     ventilation_events_with_duration = ventilation_events_with_duration.apply(lambda row: filterDuration(row), axis = 1)
     
-
-    print(ventilation_events_with_duration.to_string())
-    # for col in ventilation_events_with_duration.columns:
-    #     print(col)
-    return None
+    ventilation_events_with_duration = ventilation_events_with_duration.sort_values(by=['ICUSTAY_ID', 'CHARTTIME'])  
+    # newVentFlag = ventilation_events_with_duration.loc[(ventilation_events_with_duration.EXTUBATED == 1) | (ventilation_events_with_duration.SELFEXTUBATED == 1)]
+    
+    # newVentFlag2 = ventilation_events_with_duration.loc[(ventilation_events_with_duration.OXYGENTHERAPY == 1) & (ventilation_events_with_duration.MECHVENT == 0)]
+    
+    ventilation_events_with_duration = ventilation_events_with_duration.loc[ventilation_events_with_duration.VENTDURATION > 0]
+    # print(".... test: \n", test.to_string(), test.shape)
+    # print(".... test2: \n", newVentFlag2.to_string())
+    ventilation_events_with_duration['ENDTIME'] = pd.to_datetime(ventilation_events_with_duration.CHARTTIME)
+    ventilation_events_with_duration['STARTTIME'] = ventilation_events_with_duration.ENDTIME - pd.to_timedelta(ventilation_events_with_duration.VENTDURATION_LAG)
+    
+    ventilation_events_with_duration = ventilation_events_with_duration[['ICUSTAY_ID', 'STARTTIME', 'ENDTIME', 'VENTDURATION', 'VENTDURATION_LAG', 'SUBJECT_ID', 'HADM_ID']]
+    
+    
+    # print(">>>> extubatedLag: ", extubatedLag.to_string())
+    # print(ventilation_events_with_duration.to_string())
+    # print(ventilation_events_with_duration.shape)
+    # test = ventilation_events_with_duration.loc[ventilation_events_with_duration.groupby('ICUSTAY_ID').CHARTTIME.idxmax()]
+    # test = ventilation_events_with_duration.groupby('ICUSTAY_ID').EXTUBATED.sum()
+    
+    # print(">>>>> test\n", test.to_string())
+    ventilation_events_with_duration['ITEMID'] = 999999 # special itemId for ventilation duration
+    ventilation_events_with_duration['CHARTTIME'] = ventilation_events_with_duration['STARTTIME']
+    ventilation_events_with_duration['VALUE'] = ventilation_events_with_duration['VENTDURATION']
+    ventilation_events_with_duration['VALUEUOM'] = "mins"
+    ventilation_events_with_duration = ventilation_events_with_duration[['SUBJECT_ID', 'HADM_ID', 'ICUSTAY_ID', 'CHARTTIME', 'ITEMID', 'VALUE', 'VALUEUOM']]
+    # print("<><><> start_time: \n", ventilation_events_with_duration.to_string(), ventilation_events_with_duration.shape)
+    
+    return ventilation_events_with_duration
 
 
 def read_procedureevents_mv_vent(mimic3_path):
@@ -296,7 +319,7 @@ def read_chartevents_vent(mimic3_path):
     ]
    
     events = events[(events.ITEMID.isin(ventilation_item_id_set) & events.VALUE.notnull() & (~events.ERROR.isin([1.0])))] 
-    events = events[['ICUSTAY_ID', "CHARTTIME","ITEMID", 'VALUE', 'VALUENUM', 'VALUEUOM', 'STORETIME']]
+    events = events[['ICUSTAY_ID', "CHARTTIME","ITEMID", 'VALUE', 'VALUENUM', 'VALUEUOM', 'STORETIME', 'SUBJECT_ID', 'HADM_ID']]
     events.STORETIME = pd.to_datetime(events.STORETIME)
     # https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Series.isin.html
     # Whether elements in Series are contained in values.
@@ -446,66 +469,6 @@ def break_up_diagnoses_by_subject(diagnoses, output_path, subjects=None):
 
 
 def read_events_table_and_break_up_by_subject(mimic3_path, table, output_path,
-                                              items_to_keep=None, subjects_to_keep=None):
-    obs_header = ['SUBJECT_ID', 'HADM_ID', 'ICUSTAY_ID', 'CHARTTIME', 'ITEMID', 'VALUE', 'VALUENUM', 'VALUEUOM']
-    if items_to_keep is not None:
-        items_to_keep = set([str(s) for s in items_to_keep])
-    if subjects_to_keep is not None:
-        subjects_to_keep = set([str(s) for s in subjects_to_keep])
-
-    class DataStats(object):
-        def __init__(self):
-            self.curr_subject_id = ''
-            self.curr_obs = []
-
-    data_stats = DataStats()
-
-    def write_current_observations():
-        dn = os.path.join(output_path, str(data_stats.curr_subject_id))
-        try:
-            os.makedirs(dn)
-        except:
-            pass
-        fn = os.path.join(dn, 'events.csv')
-        if not os.path.exists(fn) or not os.path.isfile(fn):
-            f = open(fn, 'w')
-            f.write(','.join(obs_header) + '\n')
-            f.close()
-        w = csv.DictWriter(open(fn, 'a'), fieldnames=obs_header, quoting=csv.QUOTE_MINIMAL)
-        w.writerows(data_stats.curr_obs)
-        data_stats.curr_obs = []
-
-    nb_rows_dict = {'chartevents': 330712484, 'labevents': 27854056, 'outputevents': 4349219}
-    nb_rows = nb_rows_dict[table.lower()]
-    
-    for row, row_no, _ in tqdm(read_events_table_by_row(mimic3_path, table), total=nb_rows,
-                                                        desc='Processing {} table'.format(table)):
-        if (subjects_to_keep is not None) and (row['SUBJECT_ID'] not in subjects_to_keep):
-            continue
-        if (items_to_keep is not None) and (row['ITEMID'] not in items_to_keep):
-            continue
-        
-        
-        row_out = {'SUBJECT_ID': row['SUBJECT_ID'],
-                   'HADM_ID': row['HADM_ID'],
-                   'ICUSTAY_ID': '' if 'ICUSTAY_ID' not in row else row['ICUSTAY_ID'],
-                   'CHARTTIME': row['CHARTTIME'],
-                   'ITEMID': row['ITEMID'],
-                   'VALUE': row['VALUE'],
-                   'VALUENUM': '' if 'VALUENUM' not in row else row['VALUENUM'],
-                   'VALUEUOM': row['VALUEUOM']}
-        
-        if data_stats.curr_subject_id != '' and data_stats.curr_subject_id != row['SUBJECT_ID']:
-            write_current_observations()
-        data_stats.curr_obs.append(row_out)
-        data_stats.curr_subject_id = row['SUBJECT_ID']
-
-    if data_stats.curr_subject_id != '':
-        write_current_observations()
-        
-        
-
-def read_events_table_and_break_up_by_subject2(mimic3_path, table, output_path,
                                               items_to_keep=None, subjects_to_keep=None):
     obs_header = ['SUBJECT_ID', 'HADM_ID', 'ICUSTAY_ID', 'CHARTTIME', 'ITEMID', 'VALUE', 'VALUENUM', 'VALUEUOM']
     if items_to_keep is not None:
