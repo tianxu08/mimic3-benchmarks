@@ -116,11 +116,63 @@ def read_itemid_to_variable_map(fn, variable_column='LEVEL2'):
     var_map = var_map[(var_map.STATUS == 'ready')]
     var_map.ITEMID = var_map.ITEMID.astype(int)
     var_map = var_map[[variable_column, 'ITEMID', 'MIMIC LABEL']].set_index('ITEMID')
-    return var_map.rename({variable_column: 'VARIABLE', 'MIMIC LABEL': 'MIMIC_LABEL'}, axis=1)
+    result = var_map.rename({variable_column: 'VARIABLE', 'MIMIC LABEL': 'MIMIC_LABEL'}, axis=1)
+    print("result>>>>>> ", result.to_string())
+    return result
 
 
 def map_itemids_to_variables(events, var_map):
-    return events.merge(var_map, left_on='ITEMID', right_index=True)
+    ventilation_item_id_set = [
+    #-- the below are settings used to indicate ventilation
+      720, 223849 #-- vent mode
+    , 223848 #-- vent type
+    , 445, 448, 449, 450, 1340, 1486, 1600, 224687 #-- minute volume
+    , 639, 654, 681, 682, 683, 684,224685,224684,224686 #-- tidal volume
+    , 218,436,444,224697,224746,224747 #-- High/Low/Peak/Mean ("RespPressure")
+    , 221,1,1211,1655,2000,226873,224738,224419,224750,227187 #-- Insp pressure # not finished
+    , 543, 224696 #-- PlateauPressure
+    , 535, 224695 # -- Peak Insp Pressure
+    , 5865,5866,224707,224709,224705,224706 #-- APRV pressure
+    , 60,437,505,506,686,50819,220339,224700  #-- PEEP
+    , 3459 #-- high pressure relief
+    , 501,502,503,224702 #-- PCV
+    , 223,667,668,669,670,671,672 #-- TCPCV
+    , 224701 #-- PSVlevel
+    
+    , 619, 224688 #-- Respiratory Rate Set
+    , 615 #--  Resp Rate (Total)
+    , 618 #--  Respiratory Rate
+    , 224690 #-- Respiratory Rate (Total)
+    , 220210 #-- Respiratory Rate
+
+    #-- the below are settings used to indicate extubation
+    , 640 #-- extubated
+
+    #-- the below indicate oxygen/NIV, i.e. the end of a mechanical vent event
+    , 468 #-- O2 Delivery Device#2
+    , 469 #-- O2 Delivery Mode
+    , 470 #-- O2 Flow (lpm)
+    , 471 #-- O2 Flow (lpm) #2
+    , 227287 #-- O2 Flow (additional cannula)
+    , 226732 #-- O2 Delivery Device(s)
+    , 223834 #-- O2 Flow
+
+    #-- fio2
+    , 3420 #-- FiO2
+    , 190 #-- FiO2 set
+    , 223835 #-- Inspired O2 Fraction (FiO2)
+    , 3422 #-- FiO2 [measured]
+    , 727
+  
+    #-- used in both oxygen + vent calculation
+    , 467 #-- O2 Delivery Device
+    ]
+   
+    test = events[(events.ITEMID.isin(ventilation_item_id_set))]
+    # print("<<<<<<<test\n", test.to_string(), test.shape) 
+    # print(">>> event.type: ", type(events))
+    # return events.merge(var_map, left_on='ITEMID', right_index=True)
+    return events.merge(var_map, how="inner", left_on=['ITEMID'], right_on=['ITEMID'])
 
 
 def read_variable_ranges(fn, variable_column='LEVEL2'):

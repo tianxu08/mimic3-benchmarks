@@ -31,6 +31,22 @@ except:
 patients = read_patients_table(args.mimic3_path)
 admits = read_admissions_table(args.mimic3_path)
 stays = read_icustays_table(args.mimic3_path)
+
+# to compose the mechnial poser
+# vent = read_chartevents_vent(args.mimic3_path)
+# d_items = read_d_items(args.mimic3_path)
+# vent_with_label = get_ventilation_events_with_label(vent, d_items)
+# print(vent_with_label.to_string())
+ventilation_classification = get_ventilation_classification(args.mimic3_path)
+ventilation_durations = get_ventilation_durations(ventilation_classification)
+
+# patients_full = read_full_patients_table(args.mimic3_path)
+# stays_full = read_icustays_table(args.mimic3_path)
+# admits_full = read_full_admissions_table(args.mimic3_path)
+# chartevents_full = read_chartevents(args.mimic3_path)
+
+# test = get_mpwr_trach(stays_full, chartevents_full)
+
 if args.verbose:
     print('START:\n\tICUSTAY_IDs: {}\n\tHADM_IDs: {}\n\tSUBJECT_IDs: {}'.format(stays.ICUSTAY_ID.unique().shape[0],
           stays.HADM_ID.unique().shape[0], stays.SUBJECT_ID.unique().shape[0]))

@@ -16,7 +16,7 @@ from mimic3benchmark.preprocessing import assemble_episodic_data
 parser = argparse.ArgumentParser(description='Extract episodes from per-subject data.')
 parser.add_argument('subjects_root_path', type=str, help='Directory containing subject sub-directories.')
 parser.add_argument('--variable_map_file', type=str,
-                    default=os.path.join(os.path.dirname(__file__), '../resources/itemid_to_variable_map.csv'),
+                    default=os.path.join(os.path.dirname(__file__), '../resources/itemid_to_variable_map_new2.csv'),
                     help='CSV containing ITEMID-to-VARIABLE map.')
 parser.add_argument('--reference_range_file', type=str,
                     default=os.path.join(os.path.dirname(__file__), '../resources/variable_ranges.csv'),
@@ -37,6 +37,7 @@ for subject_dir in tqdm(os.listdir(args.subjects_root_path), desc='Iterating ove
 
     try:
         # reading tables of this subject
+        print("subject_dir: ", subject_dir)
         stays = read_stays(os.path.join(args.subjects_root_path, subject_dir))
         diagnoses = read_diagnoses(os.path.join(args.subjects_root_path, subject_dir))
         events = read_events(os.path.join(args.subjects_root_path, subject_dir))
@@ -44,10 +45,16 @@ for subject_dir in tqdm(os.listdir(args.subjects_root_path), desc='Iterating ove
         sys.stderr.write('Error reading from disk for subject: {}\n'.format(subject_id))
         continue
 
+    # print(".... stays: \n", stays)
+    # print(".... diagnoses: \n", diagnoses)
+    # print(".... events: \n", events.to_string(), events.shape)
     episodic_data = assemble_episodic_data(stays, diagnoses)
 
     # cleaning and converting to time series
+    # print(".... events: ")
+    print('>>>> var_map: \n', var_map)
     events = map_itemids_to_variables(events, var_map)
+    # print(">>>> events:\n ",events.to_string(), events.shape)
     events = clean_events(events)
     if events.shape[0] == 0:
         # no valid events for this subject

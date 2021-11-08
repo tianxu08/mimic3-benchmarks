@@ -32,6 +32,7 @@ def read_events(subject_path, remove_null=True):
     events.ICUSTAY_ID = events.ICUSTAY_ID.fillna(value=-1).astype(int)
     events.VALUEUOM = events.VALUEUOM.fillna('').astype(str)
     # events.sort_values(by=['CHARTTIME', 'ITEMID', 'ICUSTAY_ID'], inplace=True)
+    # print(".... events: ", events)
     return events
 
 
